@@ -1,0 +1,13 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:Humidity.UI.Styles">
+
+    <Style TargetType="{x:Type Ellipse}" x:Key="BaseLed">
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Margin" Value="5" />
+        <Setter Property="Stroke" Value="#343a40" />
+        <Setter Property="StrokeThickness" Value="0.5" />
+    </Style>
+
+</ResourceDictionary>

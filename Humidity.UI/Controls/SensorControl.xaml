@@ -1,0 +1,117 @@
+﻿<UserControl x:Class="Humidity.UI.Controls.SensorControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:Humidity.UI.Controls"
+             xmlns:converters="clr-namespace:Humidity.UI.ValueConvertors"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    
+    <UserControl.Resources>
+        <converters:BooleanInvertConverter x:Key="BooleanInvertConverter" />
+    </UserControl.Resources>
+
+    <materialDesign:Card Margin="5" Padding="4">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Style="{StaticResource MaterialDesignHeadline5TextBlock}" >
+                Measurement Control
+            </TextBlock>
+
+            <Separator Grid.Row="1" Style="{StaticResource MaterialDesignDarkSeparator}" />
+
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel VerticalAlignment="Center">
+
+                    <Button Style="{StaticResource MaterialDesignRaisedAccentButton}"                           
+                            Margin="0 10"
+                            Content="Run" 
+                            ToolTip="Run"
+                            Command="{Binding StartMeasuringCommand}"
+                            IsEnabled="{Binding IsRunning, Converter={StaticResource BooleanInvertConverter}}"/>
+
+                    <Button Style="{StaticResource MaterialDesignRaisedButton}" 
+                              Margin="0 10"
+                            Content="Stop" 
+                            ToolTip="Start"
+                            Command="{Binding StopMeasuringCommand}"
+                            IsEnabled="{Binding IsRunning}" />
+
+                </StackPanel>
+
+                <Grid Grid.Column="1" Margin="15 0 0 0">
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBox Margin="0 10"
+                             Text="{Binding TimeInterval, UpdateSourceTrigger=PropertyChanged}"
+                             materialDesign:HintAssist.Hint="Sampling Time"
+                             materialDesign:HintAssist.HelperText="(s)"
+                             Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+
+                    <ComboBox Margin="0 10"
+                              Grid.Row="1" 
+                              Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                              materialDesign:HintAssist.Hint="Sensor Resolution">
+                        <ComboBoxItem IsSelected="True">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="rH: 12 bit" />
+                                <TextBlock Text="T: 14 bit" Margin="8 0 0 0" />
+                            </StackPanel>
+                        </ComboBoxItem>
+                        <ComboBoxItem>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="rH: 8 bit" />
+                                <TextBlock Text="T: 12 bit" Margin="8 0 0 0" />
+                            </StackPanel>
+                        </ComboBoxItem>
+                        <ComboBoxItem>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="rH: 10 bit" />
+                                <TextBlock Text="T: 13 bit" Margin="8 0 0 0" />
+                            </StackPanel>
+                        </ComboBoxItem>
+                        <ComboBoxItem>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="rH: 11 bit" />
+                                <TextBlock Text="T: 11 bit" Margin="8 0 0 0" />
+                            </StackPanel>
+                        </ComboBoxItem>
+                    </ComboBox>
+
+                    <StackPanel Margin="0 10"
+                                Orientation="Horizontal" 
+                                Grid.Row="2"
+                                HorizontalAlignment="Left" 
+                                VerticalAlignment="Center">
+                        <ToggleButton Style="{StaticResource MaterialDesignSwitchAccentToggleButton}"
+                                      ToolTip="MaterialDesignSwitchAccentToggleButton"
+                                      IsChecked="{Binding IsHeating}"
+                                      Command="{Binding HeaterCommand}" />
+                        <TextBlock Text="On-chip heater" Margin="15 0 0 0" />
+                    </StackPanel>
+
+                </Grid>
+
+            </Grid>
+
+        </Grid>
+    </materialDesign:Card>
+    
+</UserControl>
