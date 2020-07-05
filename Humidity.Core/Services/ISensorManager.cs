@@ -4,13 +4,16 @@ using System.Threading.Tasks;
 
 namespace Humidity.Core.Services
 {
+    /// <summary>
+    /// Interface for the Sensirion humidity sensor
+    /// </summary>
     public interface ISensorManager
     {
         /// <summary>
         /// Counts the connected devices
         /// </summary>
         /// <returns>The number of connected devices</returns>
-        int GetCountSensors();
+        Task<int> GetCountSensors();
 
         /// <summary>
         /// Get the sensors and put them into a list
@@ -31,13 +34,13 @@ namespace Humidity.Core.Services
         /// Filling the buffer with the values comming from the sensor with the given trigger
         /// </summary>
         /// <param name="trigger">byte for the kind of parameter required</param>
-        Task<Eight> GetValueSensor(byte trigger);
+        Task<Eight> GetValueSensor(int ioHandle, byte trigger);
 
         /// <summary>
         /// Writing values to the sensor, eg: heating etc...
         /// </summary>
         /// <param name="trigger">byte for the kind of parameter required</param>
         /// <param name="status">status for the sensor</param>
-        Task SetValueSensor(byte trigger, byte status);
+        void SetValueSensor(int ioHandle, byte trigger, byte status);
     }
 }

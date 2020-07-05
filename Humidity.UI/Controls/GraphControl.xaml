@@ -25,7 +25,7 @@
 
             <TextBlock Style="{StaticResource MaterialDesignHeadline5TextBlock}" >
                 Measure Graph
-            </TextBlock>
+            </TextBlock>           
 
             <Separator Grid.Row="1" Style="{StaticResource MaterialDesignDarkSeparator}" />
 
@@ -36,7 +36,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <lvc:CartesianChart LegendLocation="Bottom">
+                <lvc:CartesianChart LegendLocation="Bottom" Hoverable="False" DataTooltip="{x:Null}">
                     <lvc:CartesianChart.Series>
                         <lvc:LineSeries Title="Temperatuur"
                                     Values="{Binding ChartValuesTemperature}"

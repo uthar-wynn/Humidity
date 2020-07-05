@@ -24,39 +24,67 @@
 
                 <TextBlock Style="{StaticResource MaterialDesignHeadline5TextBlock}" Text="Compressor" />
 
-                <CheckBox Grid.Column="1" Style="{StaticResource MaterialDesignSwitchAccentToggleButton}" IsChecked="True" />
+                <ToggleButton Style="{StaticResource MaterialDesignFlatPrimaryToggleButton}" 
+                              HorizontalAlignment="Right"
+                              IsChecked="{Binding IsCompressor}">
+                    <materialDesign:PackIcon Kind="PowerCycle" Height="21" Width="21" />
+                </ToggleButton>
             </Grid>
 
             <Separator Grid.Row="1" Style="{StaticResource MaterialDesignDarkSeparator}" />
 
             <Grid Grid.Row="2">
 
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-                <TextBox Grid.Column="0" 
-                         materialDesign:HintAssist.Hint="Name" 
-                         Text="Value" VerticalAlignment="Center"
-                         Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
 
-                <TextBox Grid.Column="1" 
-                         materialDesign:HintAssist.Hint="Name" 
-                         Text="Value" VerticalAlignment="Center"
-                         Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+                    <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                        <TextBlock Text="Vochtigheid Gasfles" />
 
-                <TextBox Grid.Column="2" 
-                         materialDesign:HintAssist.Hint="Name" 
-                         Text="Value" VerticalAlignment="Center"
-                         Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox Text="{Binding Humidity_cylinder, StringFormat={}{0:0.00}, UpdateSourceTrigger=PropertyChanged, FallbackValue=0}" 
+                                     FontSize="18" 
+                                     Margin="15" 
+                                     Width="100" />
+                            <Button Margin="5" Style="{StaticResource MaterialDesignFloatingActionMiniDarkButton}"
+                                    Command="{Binding GetHumiditySensorCommand}">
+                                <materialDesign:PackIcon Kind="CameraIris" Height="24" Width="24" />
+                            </Button>
+                        </StackPanel>
 
-                <TextBox Grid.Column="3" 
-                         materialDesign:HintAssist.Hint="Name" 
-                         Text="Value" VerticalAlignment="Center"
-                         Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                        <TextBlock Text="Vochtigheid Compressor" />
+                        <TextBlock Text="{Binding Humidity_compressor, StringFormat={}{0:0.00}, FallbackValue=0}" FontSize="18" Margin="0 15" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                        <TextBlock Text="Verschil" />
+                        <TextBlock Text="{Binding Humidity_difference, StringFormat={}{0:0.00}, FallbackValue=0}" FontSize="18" Margin="0 15" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="3" HorizontalAlignment="Center">
+                        <TextBlock Text="Dauwpunt Compressor" />
+                        <TextBlock Text="{Binding Dewpoint_compressor, StringFormat={}{0:0.00}, FallbackValue=0}" FontSize="18" Margin="0 15" />
+                    </StackPanel>
+
+                </Grid>
+
+                <local:LedMessageOutputControl 
+                    Grid.Row="1" 
+                    Margin="5"                    
+                    DataContext="{Binding CompressorMessageViewModel}" />
 
             </Grid>
 

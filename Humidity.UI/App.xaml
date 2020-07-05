@@ -16,6 +16,9 @@
             <DataTemplate DataType="{x:Type viewModels:HomeViewModel}">
                 <views:HomeView />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:LogViewModel}">
+                <views:LogView />
+            </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>
 

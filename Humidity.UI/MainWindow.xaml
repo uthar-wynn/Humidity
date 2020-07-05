@@ -4,6 +4,9 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Humidity.UI"
+        xmlns:convertors="clr-namespace:Humidity.UI.ValueConvertors"
+        xmlns:vm="clr-namespace:Humidity.UI.ViewModels"
+        xmlns:nav="clr-namespace:Humidity.UI.State.Navigators"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         mc:Ignorable="d"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
@@ -16,6 +19,10 @@
         WindowStartupLocation="CenterScreen"
         Title="Sensirion" Height="720" Width="1300">
 
+    <Window.Resources>
+        <convertors:EqualValueToParameterConvertor x:Key="EqualValueToParameterConvertor" />
+    </Window.Resources>
+
     <materialDesign:DialogHost Identifier="RootDialog">
         <materialDesign:DrawerHost IsLeftDrawerOpen="{Binding ElementName=MenuToggleButton, Path=IsChecked}">
             <materialDesign:DrawerHost.LeftDrawerContent>
@@ -26,21 +33,47 @@
                                   Margin="16"
                                   IsChecked="{Binding ElementName=MenuToggleButton, Path=IsChecked, Mode=TwoWay}" />
 
-                    <ListView Margin="0 16 0 16">
+                    <StackPanel Margin="0 16">
+                        <RadioButton Style="{StaticResource MaterialDesignTabRadioButton}" 
+                                     Height="48"
+                                     IsChecked="{Binding Navigator.CurrentViewModel, Mode=OneWay, Converter={StaticResource EqualityToVisibilityConverter}, ConverterParameter={x:Type vm:HomeViewModel}}"
+                                     Command="{Binding UpdateCurrentViewModelCommand}"
+                                     CommandParameter="{x:Static nav:ViewType.Home}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Home" Margin="0 0 5 0" />
+                                <TextBlock Text="Home" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Style="{StaticResource MaterialDesignTabRadioButton}" 
+                                     Height="48"
+                                     IsChecked="{Binding Navigator.CurrentViewModel, Mode=OneWay, Converter={StaticResource EqualityToVisibilityConverter}, ConverterParameter={x:Type vm:LogViewModel}}"
+                                     Command="{Binding UpdateCurrentViewModelCommand}"
+                                     CommandParameter="{x:Static nav:ViewType.Log}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Database" Margin="0 0 5 0" />
+                                <TextBlock Text="Logs" />
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                    
+                    <!--<ListView Margin="0 16 0 16">
                         <ListView.Resources>
                             <Style TargetType="ScrollBar" BasedOn="{StaticResource MaterialDesignScrollBarMinimal}" />
                         </ListView.Resources>
-                        <ListViewItem Height="45">
+                        <ListViewItem Height="45" 
+                                      IsSelected="{Binding Navigator.CurrentViewModel, Mode=OneWay, Converter={StaticResource EqualityToVisibilityConverter}, ConverterParameter={x:Type vm:HomeViewModel}}">
                             <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Home" Margin="0 0 5 0" />
                                 <TextBlock Text="Home" />
                             </StackPanel>
                         </ListViewItem>
                         <ListViewItem Height="45">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Something else..." />
+                                <materialDesign:PackIcon Kind="Database" Margin="0 0 5 0" />
+                                <TextBlock Text="Logs" />
                             </StackPanel>
                         </ListViewItem>
-                    </ListView>
+                    </ListView>-->
 
                 </DockPanel>
             </materialDesign:DrawerHost.LeftDrawerContent>

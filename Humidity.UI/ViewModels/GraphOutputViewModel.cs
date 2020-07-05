@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using System.Windows.Media;
 
 namespace Humidity.UI.ViewModels
@@ -57,7 +58,7 @@ namespace Humidity.UI.ViewModels
             set
             {
                 _value = value;
-                CheckStability();
+                Task.Run(() => CheckStability()).Wait();
                 OnPropertyChanged(nameof(ComponentValue));
             }
         }

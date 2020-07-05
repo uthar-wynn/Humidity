@@ -1,5 +1,4 @@
-﻿using Humidity.Core.Sensor;
-using Humidity.Core.Services;
+﻿using Humidity.Core.Services;
 using Humidity.UI.State.Navigators;
 using Humidity.UI.ViewModels;
 using Humidity.UI.ViewModels.Factories;
@@ -42,15 +41,22 @@ namespace Humidity.UI
                 s.GetRequiredService<ISensorManager>(),
                 s.GetRequiredService<ICalculator>()
                 ));
+            services.AddSingleton<LogViewModel>();
 
             services.AddSingleton<CreateViewModel<HomeViewModel>>(s =>
             {
                 return () => s.GetRequiredService<HomeViewModel>();
             });
 
+            services.AddSingleton<CreateViewModel<LogViewModel>>(s =>
+            {
+                return () => s.GetRequiredService<LogViewModel>();
+            });
+
             services.AddScoped<INavigator, Navigator>();
             services.AddScoped<MainViewModel>();
             services.AddScoped<HomeViewModel>();
+            services.AddScoped<LogViewModel>();
 
             services.AddScoped<MainWindow>(s => new MainWindow(s.GetRequiredService<MainViewModel>()));
 

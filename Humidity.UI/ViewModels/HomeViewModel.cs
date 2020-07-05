@@ -6,8 +6,10 @@ using LiveCharts;
 using LiveCharts.Configurations;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace Humidity.UI.ViewModels
@@ -42,7 +44,19 @@ namespace Humidity.UI.ViewModels
 
         private double _axisMin;
 
-        protected int _selectedSensorResolution;
+        private int _selectedSensorResolution;
+
+        private Object[] _tempValuesTemperature = new Object[5];
+
+        private Object[] _tempValuesHumidity = new Object[5];
+
+        private Object[] _tempValuesDewpoint = new Object[5];
+
+        private int _counter = 0;
+
+        #endregion
+
+        #region Public Properties
 
         /// <summary>
         /// Not sure yet ?
@@ -59,11 +73,25 @@ namespace Humidity.UI.ViewModels
         /// </summary>
         public string ID { get; set; }
 
-        #endregion
-
-        #region Public Properties
-
+        /// <summary>
+        /// A flag indicating the application is measuring
+        /// </summary>
         public bool IsRunning { get; set; }
+
+        /// <summary>
+        /// A flag indicating if the application is writing the measured points
+        /// </summary>
+        public bool IsLogging { get; set; }
+
+        /// <summary>
+        /// A flag indicating if the heater is on or not
+        /// </summary>
+        public bool IsHeating { get; set; } = false;
+
+        /// <summary>
+        /// A flag indicating the application is comparing results
+        /// </summary>
+        public bool IsCompressor { get; set; }
 
         public int TimeInterval
         {
@@ -164,6 +192,8 @@ namespace Humidity.UI.ViewModels
 
         public GraphOutputViewModel GraphDewpoint { get; set; }
 
+        public LedMessageOutputViewModel CompressorMessageViewModel { get; set; }
+
         public ChartValues<MeasureDataModel> ChartValuesTemperature { get; set; }
 
         public ChartValues<MeasureDataModel> ChartValuesHumidity { get; set; }
@@ -206,7 +236,7 @@ namespace Humidity.UI.ViewModels
             {
                 _selectedSensorResolution = value;
                 OnPropertyChanged(nameof(SelectedSensorResolution));
-                // SensorResolution();
+                SensorResolution();
             }
         }
 
@@ -229,9 +259,25 @@ namespace Humidity.UI.ViewModels
 
         #region Public Commands
 
+        /// <summary>
+        /// A command when the Run button is clicked
+        /// </summary>
         public ICommand StartMeasuringCommand { get; set; }
 
+        /// <summary>
+        /// A command when the Stop button is clicked
+        /// </summary>
         public ICommand StopMeasuringCommand { get; set; }
+
+        /// <summary>
+        /// A command when the Heater box is clicked
+        /// </summary>
+        public ICommand HeaterCommand { get; set; }
+
+        /// <summary>
+        /// A command when the take humidity button is clicked
+        /// </summary>
+        public ICommand GetHumiditySensorCommand { get; set; }
 
         #endregion
 
@@ -248,6 +294,11 @@ namespace Humidity.UI.ViewModels
             // The commands
             StartMeasuringCommand = new RelayCommand(StartMeasuring);
             StopMeasuringCommand = new RelayCommand(StopMeasuring);
+            HeaterCommand = new RelayCommand(Heater);
+            GetHumiditySensorCommand = new RelayCommand(() =>
+            {
+                Humidity_cylinder = _humidty;
+            });
 
             // The Timer
             _dispatcherTimer = new DispatcherTimer(DispatcherPriority.DataBind);
@@ -292,6 +343,13 @@ namespace Humidity.UI.ViewModels
             AxisUnit = TimeSpan.TicksPerSecond;
             ClearCharts();
 
+            // Compressor
+            CompressorMessageViewModel = new LedMessageOutputViewModel
+            {
+                Message = "Not Running",
+                InnerColor = Color.FromRgb(211, 211, 211), // Light gray
+                OuterColor = Color.FromRgb(128, 128, 128) // Gray
+            };
         }
 
         #endregion
@@ -300,11 +358,9 @@ namespace Humidity.UI.ViewModels
 
         private async void _dispatcherTimer_Tick(object sender, System.EventArgs e)
         {
-            // Retrieve the values from the sensor
-            GetValueSensor((byte)SensorStatus.Trigger_T_measurement_hold);
-            Temperature = GetTemperature();
-            GetValueSensor((byte)SensorStatus.Trigger_RH_measurement_hold);
-            Humidity = GetHumidity();
+            // Retrieve the values from the sensor            
+            Temperature = await Task.Run(() => GetTemperature());
+            Humidity = await Task.Run(() => GetHumidity());
 
             // Calculates the dewpoint
             Dewpoint = await _calculator.CalculateDewpoint(_temperature, _humidty);
@@ -314,69 +370,38 @@ namespace Humidity.UI.ViewModels
             GraphHumidity.ComponentValue = _humidty;
             GraphDewpoint.ComponentValue = _dewpoint;
 
-            WriteChartAsync();
+            // Add the values to the ChartValues and update the chart every 5s
+            _tempValuesTemperature[_counter] = await AddValues(_temperature);
+            _tempValuesHumidity[_counter] = await AddValues(_humidty);
+            _tempValuesDewpoint[_counter] = await AddValues(_dewpoint);
+
+            if (_counter == 4)
+                await Task.Run(() => WriteChartAsync());
+
+            _counter++;
+
+            if (_counter == 5)
+                _counter = 0;
+
+            // Compressor control
+            if (IsCompressor)
+                await Task.Run(() => Dewpoint_Compressor());
         }
 
-        // async Task ?
-        private void WriteChartAsync()
+        private async Task<MeasureDataModel> AddValues(double value)
         {
-            ChartValuesTemperature.Add(new MeasureDataModel
+            return await Task.Run(() => new MeasureDataModel
             {
                 DateTime = DateTime.Now,
-                Value = Temperature
+                Value = value
             });
-            ChartValuesHumidity.Add(new MeasureDataModel
-            {
-                DateTime = DateTime.Now,
-                Value = Humidity
-            });
-            ChartValuesDewpoint.Add(new MeasureDataModel
-            {
-                DateTime = DateTime.Now,
-                Value = Dewpoint
-            });
-
-            // Create space between last point and border chart
-            AxisMax = DateTime.Now.Ticks + TimeSpan.FromSeconds(5).Ticks; //1
-
-            // Updates the seperators between times depending on the count of points
-            switch (ChartValuesTemperature.Count)
-            {
-                case int c when (c < 120):
-                    AxisStep = TimeSpan.FromSeconds(20).Ticks;
-                    break;
-                case int c when (c >= 120 && c < 420):
-                    AxisStep = TimeSpan.FromSeconds(55).Ticks;
-                    break;
-                case int c when (c >= 420 && c < 600):
-                    AxisStep = TimeSpan.FromSeconds(115).Ticks;
-                    break;
-                case int c when (c >= 600):
-                    AxisStep = TimeSpan.FromSeconds(225).Ticks;
-                    break;
-                default:
-                    AxisStep = TimeSpan.FromSeconds(20).Ticks;
-                    break;
-
-            }
-
-
-            // Remove the old values   
-            // For performance reasons keep the max value @300 (= 5min)
-            if (ChartValuesTemperature.Count > 300)
-            {
-                ChartValuesTemperature.RemoveAt(0);
-                ChartValuesHumidity.RemoveAt(0);
-                ChartValuesDewpoint.RemoveAt(0);
-                AxisMin = DateTime.Now.Ticks - TimeSpan.FromSeconds(304).Ticks;
-            }
         }
 
-        private void StartMeasuring()
+        private async void StartMeasuring()
         {
             IsRunning = true;
 
-            Init();
+            await Task.Run(() => Init());
 
             if (DevicesConnected)
             {
@@ -408,29 +433,68 @@ namespace Humidity.UI.ViewModels
             _dispatcherTimer.Stop();
         }
 
-        private void SetAxisLimits(DateTime dateTime)
+        private async void Heater()
         {
-            AxisMax = dateTime.Ticks + TimeSpan.FromSeconds(1).Ticks;
-            AxisMin = dateTime.Ticks + TimeSpan.FromSeconds(4).Ticks;
+            byte heater_mask;
+
+            if (IsHeating)
+                heater_mask = 4;
+            else
+                heater_mask = 251;
+
+            _buffer = await _sensorManager.GetValueSensor(mIOHandle[1], (byte)SensorStatus.read_user_register);
+            var status = _buffer.byte2;
+            status |= heater_mask;
+            Task.Run(() => _sensorManager.SetValueSensor(mIOHandle[1], (byte)SensorStatus.write_user_register, (byte)status)).Wait();
         }
 
-        /// <summary>
-        /// Clear's the charts data
-        /// </summary>
-        private void ClearCharts()
+        private async void SensorResolution()
         {
-            ChartValuesTemperature = new ChartValues<MeasureDataModel>();
-            ChartValuesHumidity = new ChartValues<MeasureDataModel>();
-            ChartValuesDewpoint = new ChartValues<MeasureDataModel>();
-            SetAxisLimits(DateTime.Now);
+            byte heater_mask = 126;
+
+            switch (_selectedSensorResolution)
+            {
+                case 0:
+                    heater_mask = 126;
+                    break;
+                case 1:
+                    heater_mask = 127;
+                    break;
+                case 2:
+                    heater_mask = 128;
+                    break;
+                case 3:
+                    heater_mask = 129;
+                    break;
+                default:
+                    heater_mask = 126;
+                    break;
+            }
+
+            _buffer = await _sensorManager.GetValueSensor(mIOHandle[1], (byte)SensorStatus.read_user_register);
+            var status = _buffer.byte2;
+            status |= heater_mask;
+            Task.Run(() => _sensorManager.SetValueSensor(mIOHandle[1], (byte)SensorStatus.write_user_register, (byte)status)).Wait();
+        }
+
+        private void StartLogging()
+        {
+            IsLogging = true;
+        }
+
+        private void StopLogging()
+        {
+            IsLogging = false;
         }
 
         private void Init()
         {
             try
             {
-                Sensor.IowKitOpenDevice();
-                HandleDevices = _sensorManager.GetCountSensors();
+                Task openDevices = Task.Run(() => Sensor.IowKitOpenDevice());
+                openDevices.Wait();
+                Task countSensors = Task.Run(async () => HandleDevices = await _sensorManager.GetCountSensors());
+                countSensors.Wait();
 
                 if (HandleDevices > 0)
                     DevicesConnected = true;
@@ -458,7 +522,7 @@ namespace Humidity.UI.ViewModels
             {
                 IsRunning = false;
                 _dispatcherTimer.Stop();
-                MessageBox.Show("Error");
+                MessageBox.Show("IIC Special mode function write failed");
                 //await ManagerUI.ShowMessage(new MessageBoxDialogViewModel
                 //{
                 //    Message = "IIC Special mode function write failed",
@@ -468,104 +532,154 @@ namespace Humidity.UI.ViewModels
         }
 
         /// <summary>
-        /// Filling the buffer with the values comming from the sensor with the given trigger
+        /// Retrieves information about the sensor.
+        /// To be called after the sensor is starting to measure
         /// </summary>
-        /// <param name="trigger">byte for the kind of parameter required</param>
-        private void GetValueSensor(byte trigger)
+        private void GetSensorInformation()
         {
-            try
+            // DLLVersion = Sensor.IowKitVersion();
+            IOHandle = mIOHandle[1].ToString();
+            Found = Sensor.IowKitGetNumDevs().ToString();
+            ID = Sensor.IowKitGetProductId(mIOHandle[1]).ToString();
+        }
+
+        private async void Dewpoint_Compressor()
+        {
+            Humidity_compressor = _humidty;
+
+            Humidity_difference = Math.Abs(Humidity_compressor - Humidity_cylinder);
+            Dewpoint_compressor = await _calculator.CalculateDewpoint(_temperature, Humidity_difference);
+
+            switch (Dewpoint_compressor)
             {
-                _buffer.byte0 = 2;
-                _buffer.byte1 = 194;
-                _buffer.byte2 = (byte)SensorStatus.sh21adr_write;
-                _buffer.byte3 = trigger;
-
-                Sensor.IowKitWrite(mIOHandle[1], 1, ref _buffer, 8);
-                Sensor.IowKitRead(mIOHandle[1], 1, ref _buffer, 8);
-
-                if (_buffer.byte1 == 128)
-                {
-                    IsRunning = false;
-                    _dispatcherTimer.Stop();
-                    //ManagerUI.ShowMessage(new MessageBoxDialogViewModel
-                    //{
-                    //    Message = "IIC no ack from sensor during write",
-                    //    Title = "Error"
-                    //});
-                }
-
-
-                _buffer.byte0 = 3;
-                _buffer.byte1 = 3;
-                _buffer.byte2 = (byte)SensorStatus.sh21adr_read;
-
-                Sensor.IowKitWrite(mIOHandle[1], 1, ref _buffer, 8);
-                Sensor.IowKitRead(mIOHandle[1], 1, ref _buffer, 8);
-
-                if (_buffer.byte1 == 128)
-                {
-                    IsRunning = false;
-                    _dispatcherTimer.Stop();
-                    //ManagerUI.ShowMessage(new MessageBoxDialogViewModel
-                    //{
-                    //    Message = "IIC no ack from sensor during read",
-                    //    Title = "Error"
-                    //});
-                }
-
-
-            }
-            catch (Exception ex)
-            {
-                IsRunning = false;
-                _dispatcherTimer.Stop();
-                //ManagerUI.ShowMessage(new MessageBoxDialogViewModel
-                //{
-                //    Message = ex.Message,
-                //    Title = "Error"
-                //});
+                case var _ when Dewpoint_compressor <= -20 && Dewpoint_compressor >= -60:
+                    CompressorMessageViewModel.Message = "Daupunt OK!";
+                    CompressorMessageViewModel.InnerColor = Color.FromRgb(144, 238, 144); // Light green
+                    CompressorMessageViewModel.OuterColor = Color.FromRgb(0, 128, 0); // Green
+                    break;
+                case var _ when Dewpoint_compressor > -20:
+                    CompressorMessageViewModel.Message = "Daupunt te hoog!";
+                    CompressorMessageViewModel.InnerColor = Color.FromRgb(144, 238, 144); // Light blue
+                    CompressorMessageViewModel.OuterColor = Color.FromRgb(0, 0, 128); // Blue
+                    break;
+                case var _ when Dewpoint_compressor < -60:
+                    CompressorMessageViewModel.Message = "Dauwpunt te laag!";
+                    CompressorMessageViewModel.InnerColor = Color.FromRgb(147, 112, 219); // Medium purple
+                    CompressorMessageViewModel.OuterColor = Color.FromRgb(128, 0, 128); // Purple
+                    break;
+                default:
+                    CompressorMessageViewModel.Message = "No Valid Value";
+                    CompressorMessageViewModel.InnerColor = Color.FromRgb(211, 211, 211); // Light gray
+                    CompressorMessageViewModel.OuterColor = Color.FromRgb(128, 128, 128); // Gray
+                    break;
             }
         }
 
         /// <summary>
-        /// Writing values to the sensor, eg: heating etc...
+        /// Retrieve the temperature from the sensor
         /// </summary>
-        /// <param name="trigger">byte for the kind of parameter required</param>
-        /// <param name="status">status for the sensor</param>
-        private void SetValueSensor(byte trigger, byte status)
+        /// <returns>The temperature in deg C</returns>
+        private async Task<double> GetTemperature()
         {
-            try
+            // await Task.Run(() => GetValueSensor((byte)SensorStatus.Trigger_T_measurement_hold));
+            _buffer = await _sensorManager.GetValueSensor(mIOHandle[1], (byte)SensorStatus.Trigger_T_measurement_hold);
+
+            int mask_filter = 65532;
+            int value = _buffer.byte2 << 8;
+            value += _buffer.byte3;
+            value &= mask_filter;
+            return -46.85 + 175.72 * ((double)value / 65536);
+        }
+
+        /// <summary>
+        /// Retrieve the humidity from the sensor
+        /// </summary>
+        /// <returns>The humidity in %rH</returns>
+        private async Task<double> GetHumidity()
+        {
+            // await Task.Run(() => GetValueSensor((byte)SensorStatus.Trigger_RH_measurement_hold));
+            _buffer = await _sensorManager.GetValueSensor(mIOHandle[1], (byte)SensorStatus.Trigger_RH_measurement_hold);
+
+            int mask_filter = 65532;
+            int value = _buffer.byte2 << 8;
+            value += _buffer.byte3;
+            value &= mask_filter;
+            return -6 + 125 * ((double)value / 65536);
+        }
+
+        #endregion
+
+        #region Chart
+
+        private async void WriteChartAsync()
+        {
+            await Task.Run(() =>
             {
-                _buffer.byte0 = 2;
-                _buffer.byte1 = 195;
-                _buffer.byte2 = (byte)SensorStatus.sh21adr_write;
-                _buffer.byte3 = trigger;
-                _buffer.byte4 = status;
+                ChartValuesTemperature.AddRange(_tempValuesTemperature);
+                ChartValuesHumidity.AddRange(_tempValuesHumidity);
+                ChartValuesDewpoint.AddRange(_tempValuesDewpoint);
+            });
 
-                Sensor.IowKitWrite(mIOHandle[1], 1, ref _buffer, 8);
-                Sensor.IowKitRead(mIOHandle[1], 1, ref _buffer, 8);
+            // Create space between last point and border chart
+            AxisMax = await Task.Run(() => DateTime.Now.Ticks + TimeSpan.FromSeconds(5).Ticks); //1
 
-                if (_buffer.byte1 == 128)
+            // Updates the seperators between times depending on the count of points
+            switch (ChartValuesTemperature.Count)
+            {
+                case int c when (c < 120):
+                    AxisStep = TimeSpan.FromSeconds(20).Ticks;
+                    break;
+                case int c when (c >= 120 && c < 420):
+                    AxisStep = TimeSpan.FromSeconds(55).Ticks;
+                    break;
+                case int c when (c >= 420 && c < 600):
+                    AxisStep = TimeSpan.FromSeconds(115).Ticks;
+                    break;
+                case int c when (c >= 600):
+                    AxisStep = TimeSpan.FromSeconds(225).Ticks;
+                    break;
+                default:
+                    AxisStep = TimeSpan.FromSeconds(20).Ticks;
+                    break;
+
+            }
+
+
+            // Remove the old values   
+            // For performance reasons keep the max value @300 (= 5min)
+            if (ChartValuesTemperature.Count > 300)
+            {
+                await Task.Run(() =>
                 {
-                    IsRunning = false;
-                    _dispatcherTimer.Stop();
-                    //ManagerUI.ShowMessage(new MessageBoxDialogViewModel
-                    //{
-                    //    Message = "IIC no ack from sensor during read",
-                    //    Title = "Error"
-                    //});
-                }
+                    do
+                    {
+                        ChartValuesTemperature.RemoveAt(0);
+                        ChartValuesHumidity.RemoveAt(0);
+                        ChartValuesDewpoint.RemoveAt(0);
+                    } while (ChartValuesTemperature.Count > 300);
+                });
+
+
+                AxisMin = await Task.Run(() => DateTime.Now.Ticks - TimeSpan.FromSeconds(304).Ticks);
             }
-            catch (Exception ex)
-            {
-                IsRunning = false;
-                _dispatcherTimer.Stop();
-                //ManagerUI.ShowMessage(new MessageBoxDialogViewModel
-                //{
-                //    Message = ex.Message,
-                //    Title = "Error"
-                //});
-            }
+
+        }
+
+        private void SetAxisLimits(DateTime dateTime)
+        {
+            AxisMax = dateTime.Ticks + TimeSpan.FromSeconds(1).Ticks;
+            AxisMin = dateTime.Ticks + TimeSpan.FromSeconds(4).Ticks;
+        }
+
+        /// <summary>
+        /// Clear's the charts data
+        /// </summary>
+        private void ClearCharts()
+        {
+            ChartValuesTemperature = new ChartValues<MeasureDataModel>();
+            ChartValuesHumidity = new ChartValues<MeasureDataModel>();
+            ChartValuesDewpoint = new ChartValues<MeasureDataModel>();
+            SetAxisLimits(DateTime.Now);
         }
 
         /// <summary>
@@ -590,44 +704,6 @@ namespace Humidity.UI.ViewModels
         public void ChangeDewpointVisibility()
         {
             ChartDewpointVisible = GraphDewpoint.IsGraphVisible;
-        }
-
-        /// <summary>
-        /// Retrieves information about the sensor.
-        /// To be called after the sensor is starting to measure
-        /// </summary>
-        private void GetSensorInformation()
-        {
-            // DLLVersion = Sensor.IowKitVersion();
-            IOHandle = mIOHandle[1].ToString();
-            Found = Sensor.IowKitGetNumDevs().ToString();
-            ID = Sensor.IowKitGetProductId(mIOHandle[1]).ToString();
-        }
-
-        /// <summary>
-        /// Retrieve the temperature from the sensor
-        /// </summary>
-        /// <returns>The temperature in deg C</returns>
-        private double GetTemperature()
-        {
-            int mask_filter = 65532;
-            int value = _buffer.byte2 << 8;
-            value += _buffer.byte3;
-            value = (value & mask_filter);
-            return -46.85 + 175.72 * ((double)value / 65536);
-        }
-
-        /// <summary>
-        /// Retrieve the humidity from the sensor
-        /// </summary>
-        /// <returns>The humidity in %rH</returns>
-        private double GetHumidity()
-        {
-            int mask_filter = 65532;
-            int value = _buffer.byte2 << 8;
-            value += _buffer.byte3;
-            value = (value & mask_filter);
-            return -6 + 125 * ((double)value / 65536);
         }
 
         #endregion

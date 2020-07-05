@@ -11,9 +11,9 @@ namespace Humidity.Core.Services
         /// <param name="temperature">The temperature in deg Celsius</param>
         /// <param name="humidity">The relative humidity in %rH</param>
         /// <returns>Dewpoint</returns>
-        public async Task<double> CalculateDewpoint(double temperature, double humidity)
+        public Task<double> CalculateDewpoint(double temperature, double humidity)
         {
-            return await Task.Run(() =>
+            return Task.Run(() =>
             {
                 double dbl1, dbl2;
                 dbl1 = (17.62 * temperature) / (243.12 + temperature);
@@ -27,9 +27,9 @@ namespace Humidity.Core.Services
         /// </summary>
         /// <param name="temperature">The temperature in deg Celsius</param>
         /// <returns>The temperature in deg Fahrenheit</returns>
-        public async Task<double> ConvertFromCToF(double temperature)
+        public Task<double> ConvertFromCToF(double temperature)
         {
-            return await Task.Run(() => temperature * 1.8 + 32);
+            return Task.Run(() => temperature * 1.8 + 32);
         }
 
         /// <summary>
@@ -37,9 +37,9 @@ namespace Humidity.Core.Services
         /// </summary>
         /// <param name="temperature">The temperature in deg Fahrenheit</param>
         /// <returns>The temperature in deg Celsius</returns>
-        public async Task<double> ConvertFromFToC(double temperature)
+        public Task<double> ConvertFromFToC(double temperature)
         {
-            return await Task.Run(() => (temperature - 32) / 1.8);
+            return Task.Run(() => (temperature - 32) / 1.8);
         }
     }
 }

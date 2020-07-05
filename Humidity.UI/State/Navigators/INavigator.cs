@@ -4,7 +4,8 @@ namespace Humidity.UI.State.Navigators
 {
     public enum ViewType
     {
-        Home
+        Home,
+        Log
     }
 
     public interface INavigator
